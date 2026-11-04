@@ -151,12 +151,22 @@ check "  …and so does an update that goes through" '[ "$(cat "$D/.edition")" =
 mkdir -p "$D/.lemo-staging"; echo mine > "$D/.lemo-staging/x"; echo v5c > "$S/library/core/a.txt"; edition 4.26.0
 drun; check "a .lemo-staging folder the script didn't make is kept, and nothing is copied" '[ "$(cat "$D/.lemo-staging/x")" = mine ] && [ "$(cat "$D/.edition")" = 4.25.0 ]'
 rm -rf "$D/.lemo-staging"; drun
+# a link named .lemo-staging is never ours, even one that points nowhere: it is kept, and nothing is copied
+ln -s "$T/nowhere/at-all" "$D/.lemo-staging"; echo v5d > "$S/library/core/a.txt"; edition 4.27.0
+drun; check "a dangling link named .lemo-staging is kept, and nothing is copied" '[ -L "$D/.lemo-staging" ] && [ "$(readlink "$D/.lemo-staging")" = "$T/nowhere/at-all" ] && [ "$(cat "$D/.edition")" = 4.26.0 ]'
+mkdir -p "$T/elsewhere"; echo theirs > "$T/elsewhere/keep"; rm "$D/.lemo-staging"; ln -s "$T/elsewhere" "$D/.lemo-staging"
+drun; check "  …so is a link to a real folder, and what it points to" '[ -L "$D/.lemo-staging" ] && [ "$(cat "$T/elsewhere/keep")" = theirs ] && [ "$(cat "$D/.edition")" = 4.26.0 ]'
+rm "$D/.lemo-staging"; drun
+# a link named .lemo-library is never written through: the file it points to is left as it is
+D0=$D; D=$T/dlib-link; mkdir -p "$D"; echo IMPORTANT > "$T/precious.txt"; ln -s "$T/precious.txt" "$D/.lemo-library"
+drun; check "a link named .lemo-library: refused, and the file it points to is untouched" '[ "$(rc)" = 1 ] && [ "$(cat "$T/precious.txt")" = IMPORTANT ] && [ ! -f "$D/.edition" ]'
+D=$D0
 
 # a copy that fails half-way keeps the old marker and record, so the next start tries again
 badcp fail "${ST}core/a.txt"; echo v6 > "$S/library/core/a.txt"; edition 4.3.0; rec=$(cksum < "$D/.edition-files")
 (PATH="$T/badbin:$PATH"; drun)
-check "a copy that fails half-way exits 1 and keeps the old edition marker" '[ "$(rc)" = 1 ] && [ "$(cat "$D/.edition")" = 4.26.0 ] && grep -q "core/a.txt" "$T/out"'
-check "  …the old record, the old file whole, no staged file and no lock" '[ "$(cksum < "$D/.edition-files")" = "$rec" ] && [ "$(cat "$D/core/a.txt")" = v5c ] && [ "$(leftovers)" = 0 ] && [ ! -e "$D/.lemo-lock" ]'
+check "a copy that fails half-way exits 1 and keeps the old edition marker" '[ "$(rc)" = 1 ] && [ "$(cat "$D/.edition")" = 4.27.0 ] && grep -q "core/a.txt" "$T/out"'
+check "  …the old record, the old file whole, no staged file and no lock" '[ "$(cksum < "$D/.edition-files")" = "$rec" ] && [ "$(cat "$D/core/a.txt")" = v5d ] && [ "$(leftovers)" = 0 ] && [ ! -e "$D/.lemo-lock" ]'
 drun; check "  …and the next start completes the copy" '[ "$(rc)" = 0 ] && [ "$(cat "$D/.edition")" = 4.3.0 ] && [ "$(cat "$D/core/a.txt")" = v6 ]'
 
 # the copy is killed in the middle of a file: no marker or record moves, nothing is left half-written

@@ -25,10 +25,14 @@ stamp=$(cat "$SRC/.edition" 2>/dev/null || echo unknown)
 if [ "$(cat "$LIB/.edition" 2>/dev/null)" != "$stamp" ]; then
   # .lemo-library marks a folder this script made, from before the first file lands, so a first copy that was cut off
   # is recognised (and finished) on the next start instead of being taken for someone else's folder
-  if [ -e "$LIB" ] && [ -n "$(ls -A "$LIB" 2>/dev/null)" ] && [ ! -f "$LIB/.edition" ] && [ ! -f "$LIB/.lemo-library" ]; then
+  # (a marker counts only as a plain file: a link of that name, wherever it points, is not ours and is never written through)
+  ours() { [ -f "$1" ] && [ ! -L "$1" ]; }
+  if [ -e "$LIB" ] && [ -n "$(ls -A "$LIB" 2>/dev/null)" ] && ! ours "$LIB/.edition" && ! ours "$LIB/.lemo-library"; then
     echo "✗ $LIB exists and is not a Lemo-Opuscar library folder. Set LEMO_OPUSCAR_HOME to another folder."; exit 1
   fi
-  mkdir -p "$LIB"; : > "$LIB/.lemo-library"
+  mkdir -p "$LIB"
+  if [ -L "$LIB/.lemo-library" ]; then echo "✗ $LIB/.lemo-library is a link, not this script's marker; move it out of $LIB, then start again."; exit 1; fi
+  [ -e "$LIB/.lemo-library" ] || : > "$LIB/.lemo-library"
   # One copy at a time: two sessions starting together would otherwise write the same files. The lock is a folder that
   # only this script makes and only the start that made it removes. A lock left behind by a start that was killed is
   # never removed here: two starts finding it at once could each remove it, the second one taking the first one's
@@ -54,8 +58,9 @@ if [ "$(cat "$LIB/.edition" 2>/dev/null)" != "$stamp" ]; then
     else echo "✗ $LIB has no complete library yet, so there is nothing to start with."; exit 1; fi
   else
     echo $$ > "$lock/pid"; trap 'rm -rf "$lock"' EXIT; trap 'rm -rf "$lock"; exit 130' INT TERM
-    # a staging folder this script didn't make is someone else's: leave it, and don't copy
-    if [ -e "$stage" ] && [ ! -f "$stage/.lemo-staging" ]; then
+    # a staging folder this script didn't make is someone else's: leave it, and don't copy. A link of that name is never
+    # ours, even one that points nowhere (-e follows links and would miss it, and rm -rf would then remove the link)
+    if [ -L "$stage" ] || { [ -e "$stage" ] && ! ours "$stage/.lemo-staging"; }; then
       echo "! $stage is in the way (this script didn't make it). Nothing was copied; move it out of $LIB, then start again."
     # the copy that held the lock may have just finished this very edition
     elif [ "$(cat "$LIB/.edition" 2>/dev/null)" != "$stamp" ]; then
