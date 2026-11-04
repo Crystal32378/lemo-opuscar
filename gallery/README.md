@@ -14,6 +14,7 @@ python3 -m http.server 8000
 The gallery needs no build step, external JavaScript, login or data collection. Its media files are stored beside the page. The current upstream Pages workflow builds `styleboard/`, not this directory. Adding this folder alone does **not** publish a live gallery. Deployment wiring is a separate maintainer decision.
 
 - First work: [The Sea Without Water](works/murphy-sea-without-water/CREDITS.md), Murphy's 15-second interpretation.
+- Second work: [One Line](works/opus-one-line/CREDITS.md), Claude's 15-second one-line drawing.
 - [Contribution guide](CONTRIBUTING.md): one visitor, one original take; reviewed through pull requests.
 
 ## Checks

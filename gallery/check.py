@@ -19,13 +19,22 @@ class References(HTMLParser):
             assert 'autoplay' not in attrs, 'Do not autoplay visitor films'
 
 References().feed((ROOT / 'index.html').read_text(encoding='utf-8'))
-work = ROOT / 'works/murphy-sea-without-water'
-expected = {
-    'Sea-Without-Water.mp4': '2f8b1b968d24aa89f1fc9b9a2d59b43daad08937a4be4134570fcb5e4d9f43cd',
-    'Sea-Without-Water-source.zip': '0d9ab74eaacef7922c166b47313faca33a8b1523fd8215bec9a1f10233d91719',
+# every preserved work: its files must match the hashes recorded in its CREDITS.md, and its source ZIP must be intact
+WORKS = {
+    'murphy-sea-without-water': {
+        'Sea-Without-Water.mp4': '2f8b1b968d24aa89f1fc9b9a2d59b43daad08937a4be4134570fcb5e4d9f43cd',
+        'Sea-Without-Water-source.zip': '0d9ab74eaacef7922c166b47313faca33a8b1523fd8215bec9a1f10233d91719',
+    },
+    'opus-one-line': {
+        'one-line-pelican.mp4': '4d59abe40bf04aaed2db464c03bb6cdbc48b616d02c8796dcdce888693a11150',
+        'one-line-pelican-source.zip': '68a5ad1150dda22ab3b51b68ce69b519030fbd557127965a9318fdb7e6810162',
+    },
 }
-for filename, digest in expected.items():
-    assert sha256((work / filename).read_bytes()).hexdigest() == digest, filename
-with ZipFile(work / 'Sea-Without-Water-source.zip') as source:
-    assert source.testzip() is None
-print('PASS: local references, playback attributes, original MP4/ZIP hashes, ZIP integrity')
+for name, expected in WORKS.items():
+    work = ROOT / 'works' / name
+    for filename, digest in expected.items():
+        assert sha256((work / filename).read_bytes()).hexdigest() == digest, f'{name}/{filename}'
+        if filename.endswith('.zip'):
+            with ZipFile(work / filename) as source:
+                assert source.testzip() is None, f'{name}/{filename}'
+print(f'PASS: local references, playback attributes, MP4/ZIP hashes and ZIP integrity for {len(WORKS)} works')

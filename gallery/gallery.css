@@ -17,6 +17,7 @@ h1 { font-family: serif; font-size: clamp(2.5rem, 6vw, 4.6rem); line-height: 1.3
 .lead { color: var(--muted); font-size: 1.1rem; }
 .text-link { display: inline-block; padding: 8px 0; font-weight: 600; }
 .work { border: 1px solid #514832; background: #1b2124; }
+.work + .work { margin-top: 56px; }
 .screen { background: #080d10; line-height: 0; }
 video { width: 100%; height: auto; aspect-ratio: 16/9; display: block; }
 .work-info { padding: clamp(24px, 4vw, 48px); max-width: 900px; }
