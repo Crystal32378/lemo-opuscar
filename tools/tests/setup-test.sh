@@ -13,6 +13,8 @@ ok()  { pass=$((pass + 1)); echo "  ✓ $1"; }
 bad() { fail=$((fail + 1)); echo "  ✗ $1"; }
 check() { if eval "$2"; then ok "$1"; else bad "$1"; fi; }
 g() { git -c user.email=test@example.com -c user.name=test -c init.defaultBranch=main "$@"; }
+# A variable set in front of a function call (VAR=x fn) is unspecified in POSIX and stays set afterwards in macOS's
+# /bin/sh (bash 3.2): set it inside a subshell instead.
 # the scripts' last lines report missing tools: tests read only their own markers and exit codes
 run() { sh "$SETUP" "$@" > "$T/out" 2>&1; echo $? > "$T/rc"; }
 rc() { cat "$T/rc"; }
@@ -81,11 +83,11 @@ run update; check "update stops when local commits diverge, exit 1" '[ "$(rc)" =
 git -C "$L" reset -q --hard HEAD~1
 
 # origin is never rewritten
-LEMO_OPUSCAR_REPO="https://example.invalid/other.git" run update
+(LEMO_OPUSCAR_REPO="https://example.invalid/other.git"; run update)
 check "update warns when origin differs and leaves it as it is" 'grep -q "updates from" "$T/out" && [ "$(git -C "$L" remote get-url origin)" = "file://$T/up.git" ]'
 
 # a clone the user made is theirs: update refuses
-g clone -q up.git own; LEMO_OPUSCAR_HOME="$T/own" run update
+g clone -q up.git own; (LEMO_OPUSCAR_HOME="$T/own"; run update)
 check "update refuses a clone setup.sh didn't make, exit 1" '[ "$(rc)" = 1 ] && grep -q "your own clone" "$T/out"'
 
 # ---------- 2. tools/directory/setup.sh (plugin directory edition) ----------
@@ -135,7 +137,7 @@ if [ "$1" = -R ]; then "%s" "$2/.edition" "$3/.edition"; "%s" "$2/core/a.txt" "$
 exec "%s" "$@"
 ' "$realcp" "$realcp" "$realcp" > "$T/badbin/cp"
 chmod +x "$T/badbin/cp"; echo v6 > "$S/library/core/a.txt"; edition 4.3.0; rec=$(cksum < "$D/.edition-files")
-PATH="$T/badbin:$PATH" drun
+(PATH="$T/badbin:$PATH"; drun)
 check "a copy that fails half-way exits 1 and keeps the old edition marker" '[ "$(rc)" = 1 ] && [ "$(cat "$D/.edition")" = 4.2.0 ]'
 check "  …and the old record" '[ "$(cksum < "$D/.edition-files")" = "$rec" ]'
 drun; check "  …and the next start completes the copy" '[ "$(rc)" = 0 ] && [ "$(cat "$D/.edition")" = 4.3.0 ] && [ "$(cat "$D/core/a.txt")" = v6 ]'
