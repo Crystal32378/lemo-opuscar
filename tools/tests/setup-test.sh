@@ -138,36 +138,50 @@ badcp() {
   printf '#!/bin/sh\nfor dst; do :; done\ncase "$dst" in *%s) printf half > "$dst"; [ %s = kill ] && kill -KILL $PPID; exit 1 ;; esac\nexec "%s" "$@"\n' \
     "$2" "$1" "$realcp" > "$T/badbin/cp"; chmod +x "$T/badbin/cp"
 }
-leftovers() { find "$D" -name '*.lemo-new' | wc -l | tr -d ' '; }
+leftovers() { [ -e "$D/.lemo-staging" ] && find "$D/.lemo-staging" -type f ! -name .lemo-staging | wc -l | tr -d ' ' || echo 0; }
+ST='.lemo-staging/./'      # where setup.sh stages each file before renaming it into place
+unlock() { rm -rf "$D/.lemo-lock"; }   # what the user does after a start was killed (the message says so)
+
+# a file of the user's whose name looks like a temporary file is never touched, whether the update is refused or done
+echo "MY NOTES" > "$D/core/a.txt.lemo-new"; echo "MY EDIT" > "$D/core/a.txt"; echo v5b > "$S/library/core/a.txt"; edition 4.25.0
+drun; check "a refused update leaves the user's a.txt.lemo-new alone" '[ "$(cat "$D/.edition")" = 4.2.0 ] && [ "$(cat "$D/core/a.txt.lemo-new")" = "MY NOTES" ]'
+mv "$D/core/a.txt" "$T/a.mine"; drun
+check "  …and so does an update that goes through" '[ "$(cat "$D/.edition")" = 4.25.0 ] && [ "$(cat "$D/core/a.txt.lemo-new")" = "MY NOTES" ]'
+# a .lemo-staging folder the script didn't make is left alone, and nothing is copied
+mkdir -p "$D/.lemo-staging"; echo mine > "$D/.lemo-staging/x"; echo v5c > "$S/library/core/a.txt"; edition 4.26.0
+drun; check "a .lemo-staging folder the script didn't make is kept, and nothing is copied" '[ "$(cat "$D/.lemo-staging/x")" = mine ] && [ "$(cat "$D/.edition")" = 4.25.0 ]'
+rm -rf "$D/.lemo-staging"; drun
 
 # a copy that fails half-way keeps the old marker and record, so the next start tries again
-badcp fail 'core/a.txt.lemo-new'; echo v6 > "$S/library/core/a.txt"; edition 4.3.0; rec=$(cksum < "$D/.edition-files")
+badcp fail "${ST}core/a.txt"; echo v6 > "$S/library/core/a.txt"; edition 4.3.0; rec=$(cksum < "$D/.edition-files")
 (PATH="$T/badbin:$PATH"; drun)
-check "a copy that fails half-way exits 1 and keeps the old edition marker" '[ "$(rc)" = 1 ] && [ "$(cat "$D/.edition")" = 4.2.0 ] && grep -q "core/a.txt" "$T/out"'
-check "  …the old record, the old file whole, and no temporary file" '[ "$(cksum < "$D/.edition-files")" = "$rec" ] && [ "$(cat "$D/core/a.txt")" = v4 ] && [ "$(leftovers)" = 0 ]'
+check "a copy that fails half-way exits 1 and keeps the old edition marker" '[ "$(rc)" = 1 ] && [ "$(cat "$D/.edition")" = 4.26.0 ] && grep -q "core/a.txt" "$T/out"'
+check "  …the old record, the old file whole, no staged file and no lock" '[ "$(cksum < "$D/.edition-files")" = "$rec" ] && [ "$(cat "$D/core/a.txt")" = v5c ] && [ "$(leftovers)" = 0 ] && [ ! -e "$D/.lemo-lock" ]'
 drun; check "  …and the next start completes the copy" '[ "$(rc)" = 0 ] && [ "$(cat "$D/.edition")" = 4.3.0 ] && [ "$(cat "$D/core/a.txt")" = v6 ]'
 
 # the copy is killed in the middle of a file: no marker or record moves, nothing is left half-written
 for i in 1 2 3 4 5; do echo "k$i v2" > "$S/library/core/k$i.txt"; done; edition 4.35.0; drun
 for i in 1 2 3 4 5; do echo "k$i v3" > "$S/library/core/k$i.txt"; done; echo v7 > "$S/library/core/a.txt"; edition 4.4.0
 rec=$(cksum < "$D/.edition-files")
-badcp kill 'core/k3.txt.lemo-new'; (PATH="$T/badbin:$PATH"; drun)
+badcp kill "${ST}core/k3.txt"; (PATH="$T/badbin:$PATH"; drun)
 check "a copy killed mid-file leaves the old edition marker and record" '[ "$(cat "$D/.edition")" = 4.35.0 ] && [ "$(cksum < "$D/.edition-files")" = "$rec" ]'
 check "  …and the file it was writing whole (old)" '[ "$(cat "$D/core/k3.txt")" = "k3 v2" ]'
-drun; check "  …the next start completes it, without taking the copied files for edits" '[ "$(rc)" = 0 ] && [ "$(cat "$D/.edition")" = 4.4.0 ] && [ "$(cat "$D/core/k3.txt")" = "k3 v3" ] && [ "$(cat "$D/core/a.txt")" = v7 ] && ! grep -q "changed or added" "$T/out"'
-check "  …and leaves no temporary file" '[ "$(leftovers)" = 0 ]'
+drun; check "  …the next start sees the lock it left, says how to clear it, and changes nothing" '[ "$(rc)" = 0 ] && [ "$(cat "$D/.edition")" = 4.35.0 ] && grep -q "rm -rf" "$T/out" && [ -d "$D/.lemo-lock" ]'
+unlock; drun; check "  …once it is cleared, the next start completes it without taking copied files for edits" '[ "$(rc)" = 0 ] && [ "$(cat "$D/.edition")" = 4.4.0 ] && [ "$(cat "$D/core/k3.txt")" = "k3 v3" ] && [ "$(cat "$D/core/a.txt")" = v7 ] && ! grep -q "changed or added" "$T/out"'
+check "  …and leaves no staged file or lock" '[ "$(leftovers)" = 0 ] && [ ! -e "$D/.lemo-staging" ] && [ ! -e "$D/.lemo-lock" ]'
 
 # killed after every file is in place but before the record and marker: the next start finishes
 echo v8 > "$S/library/core/a.txt"; edition 4.5.0
-badcp kill '.edition-files.lemo-new'; (PATH="$T/badbin:$PATH"; drun)
+badcp kill '.lemo-staging/edition-files'; (PATH="$T/badbin:$PATH"; drun)
 check "a copy killed before the marker is written keeps the old marker" '[ "$(cat "$D/.edition")" = 4.4.0 ] && [ "$(cat "$D/core/a.txt")" = v8 ]'
-drun; check "  …and the next start finishes it" '[ "$(rc)" = 0 ] && [ "$(cat "$D/.edition")" = 4.5.0 ] && [ "$(leftovers)" = 0 ]'
+unlock; drun; check "  …and the next start finishes it" '[ "$(rc)" = 0 ] && [ "$(cat "$D/.edition")" = 4.5.0 ] && [ "$(leftovers)" = 0 ]'
 
-# the very first copy is killed: the next start recognises the folder as its own and finishes
+# the very first copy is killed: with the lock cleared, the next start recognises the folder as its own and finishes
 D0=$D; D=$T/dlib-first
-badcp kill 'core/k2.txt.lemo-new'; (PATH="$T/badbin:$PATH"; drun)
+badcp kill "${ST}core/k2.txt"; (PATH="$T/badbin:$PATH"; drun)
 check "a first copy killed half-way leaves no edition marker" '[ ! -f "$D/.edition" ] && [ -f "$D/.lemo-library" ]'
-drun; check "  …and the next start finishes it instead of refusing the folder" '[ "$(rc)" = 0 ] && [ "$(cat "$D/.edition")" = 4.5.0 ] && [ "$(cat "$D/core/k2.txt")" = "k2 v3" ]'
+drun; check "  …the next start, finding its lock, exits 1 (no complete library to start with)" '[ "$(rc)" = 1 ] && grep -q "rm -rf" "$T/out"'
+unlock; drun; check "  …and once it is cleared, finishes instead of refusing the folder" '[ "$(rc)" = 0 ] && [ "$(cat "$D/.edition")" = 4.5.0 ] && [ "$(cat "$D/core/k2.txt")" = "k2 v3" ]'
 D=$D0
 
 # two starts at once: one copies, the other waits for it; both end with the whole new edition and no lock left
@@ -177,10 +191,18 @@ for i in 1 2 3 4 5; do echo "k$i v4" > "$S/library/core/k$i.txt"; done; echo v9 
 wait
 check "two starts at once both succeed" '[ "$(cat "$T/rc1")" = 0 ] && [ "$(cat "$T/rc2")" = 0 ]'
 check "  …the folder has the whole new edition, once" '[ "$(cat "$D/.edition")" = 4.6.0 ] && [ "$(cat "$D/core/a.txt")" = v9 ] && [ "$(cat "$D/core/k5.txt")" = "k5 v4" ] && [ "$(cat "$T/out1" "$T/out2" | grep -c "ready in")" = 1 ]'
-check "  …and no lock or temporary file is left" '[ ! -e "$D/.lemo-lock" ] && [ "$(leftovers)" = 0 ]'
-# a lock left by a copy that was killed is taken over
-mkdir "$D/.lemo-lock"; sh -c 'echo $$' > "$D/.lemo-lock/pid"; echo v10 > "$S/library/core/a.txt"; edition 4.7.0
-drun; check "a lock whose process is gone is taken over" '[ "$(rc)" = 0 ] && [ "$(cat "$D/.edition")" = 4.7.0 ] && [ ! -e "$D/.lemo-lock" ]'
+check "  …and no lock or staged file is left" '[ ! -e "$D/.lemo-lock" ] && [ "$(leftovers)" = 0 ]'
+
+# a lock left by a start that was killed is never removed automatically: two starts finding it at once could each
+# remove it and both copy. Both starts leave the library and the lock as they are, and say how to clear it.
+mkdir "$D/.lemo-lock"; sh -c 'echo $$' > "$D/.lemo-lock/pid"; lockpid=$(cat "$D/.lemo-lock/pid")
+echo v10 > "$S/library/core/a.txt"; edition 4.7.0
+(LEMO_OPUSCAR_HOME="$D" sh "$S/scripts/setup.sh" > "$T/out1" 2>&1; echo $? > "$T/rc1") &
+(LEMO_OPUSCAR_HOME="$D" sh "$S/scripts/setup.sh" > "$T/out2" 2>&1; echo $? > "$T/rc2") &
+wait
+check "two starts at the same stale lock: neither copies, both carry on with the old edition" '[ "$(cat "$T/rc1")" = 0 ] && [ "$(cat "$T/rc2")" = 0 ] && [ "$(cat "$D/.edition")" = 4.6.0 ] && [ "$(cat "$D/core/a.txt")" = v9 ] && [ "$(cat "$T/out1" "$T/out2" | grep -c "ready in")" = 0 ]'
+check "  …the stale lock is left exactly as it was, and both say how to clear it" '[ "$(cat "$D/.lemo-lock/pid")" = "$lockpid" ] && grep -q "rm -rf" "$T/out1" && grep -q "rm -rf" "$T/out2"'
+unlock; drun; check "  …once it is cleared, the next start copies" '[ "$(rc)" = 0 ] && [ "$(cat "$D/.edition")" = 4.7.0 ] && [ ! -e "$D/.lemo-lock" ]'
 
 # a folder copied by the old setup.sh has no record of what it shipped: changed files are backed up before the copy
 rm "$D/.edition-files"; echo "OLD EDIT" > "$D/core/a.txt"; echo v5 > "$S/library/core/a.txt"; edition 5.0.0
