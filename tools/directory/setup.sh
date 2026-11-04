@@ -7,7 +7,9 @@
 # (node_modules/, .venv/) and the models it downloads later should survive plugin updates.
 # A file in the working folder that the user changed or added is never overwritten: when a new edition would replace
 # one, the copy is skipped (the folder keeps its edition) and the files are listed. .edition-files records what each
-# copy put there, so changed files can be told apart from files the last edition shipped.
+# copy put there, so changed files can be told apart from files the last edition shipped. A folder or link where the
+# new edition puts a file (or a file where it puts a folder) also stops the copy, and the edition marker and record
+# change only after every file is in place.
 # LEMO_OPUSCAR_HOME = the working folder (default ~/.lemo-opuscar).
 set -e
 SRC=$(cd "$(dirname "$0")/../library" && pwd -P)
@@ -37,11 +39,20 @@ if [ "$(cat "$LIB/.edition" 2>/dev/null)" != "$stamp" ]; then
        FILENAME == ARGV[2] { od[key($0)] = $1 " " $2; next }
        { p = key($0); c = $1 " " $2; if (c != nw[p] && !(p in od && od[p] == c)) print p }' \
     "$tmp/new" "$tmp/old" "$tmp/cur" > "$tmp/changed"
-  if [ -s "$tmp/changed" ] && [ -f "$LIB/.edition-files" ]; then
-    echo "! the plugin has a new library ($stamp), but these files in $LIB were changed or added here, and the new"
+  # paths the copy can't write at all (no backup helps): a folder or a link where a file goes, a file where a folder goes
+  sed 's/^[^ ]* [^ ]* //' "$tmp/new" | while IFS= read -r f; do
+    if [ -L "$LIB/$f" ] || [ -d "$LIB/$f" ]; then echo "$f"; continue; fi
+    d=$(dirname "$f")
+    while [ "$d" != . ]; do
+      if [ -L "$LIB/$d" ] || { [ -e "$LIB/$d" ] && [ ! -d "$LIB/$d" ]; }; then echo "$d"; break; fi
+      d=$(dirname "$d")
+    done
+  done | sort -u > "$tmp/blocked"
+  if [ -s "$tmp/blocked" ] || { [ -s "$tmp/changed" ] && [ -f "$LIB/.edition-files" ]; }; then
+    echo "! the plugin has a new library ($stamp), but these paths in $LIB were changed or added here, and the new"
     echo "  edition would replace them. Nothing was copied; $LIB keeps $(cat "$LIB/.edition" 2>/dev/null) and your files:"
-    sed 's/^\.\//  /' "$tmp/changed" | head -20
-    echo "  To take the new edition, move these files out of $LIB, then start again."
+    sort -u "$tmp/blocked" "$tmp/changed" | sed 's/^\.\//  /' | head -20
+    echo "  To take the new edition, move these out of $LIB, then start again."
   else
     if [ -s "$tmp/changed" ]; then
       # copied by an older setup.sh that kept no record: changed files can't be told from old ones, so keep them all
@@ -49,8 +60,15 @@ if [ "$(cat "$LIB/.edition" 2>/dev/null)" != "$stamp" ]; then
       while IFS= read -r f; do mkdir -p "$bak/$(dirname "$f")"; cp -p "$LIB/$f" "$bak/$f"; done < "$tmp/changed"
       echo "! $(wc -l < "$tmp/changed" | tr -d ' ') library files in $LIB differ from the new edition; copies of them are in $bak"
     fi
-    # copy over the old files; packages and downloaded models (node_modules/, .venv/, core/tts/*.onnx…) stay
-    cp -R "$SRC/." "$LIB/"
+    # copy over the old files; packages and downloaded models (node_modules/, .venv/, core/tts/*.onnx…) stay.
+    # The edition marker and the record change only once every file is in place: a copy that fails half-way keeps the
+    # old marker, so the next start tries again (the files it did replace were ones the last edition shipped).
+    old=$(cat "$LIB/.edition" 2>/dev/null || true)
+    if ! cp -R "$SRC/." "$LIB/"; then
+      if [ -n "$old" ]; then printf '%s\n' "$old" > "$LIB/.edition"; else rm -f "$LIB/.edition"; fi
+      echo "✗ the new library ($stamp) could not be copied completely into $LIB; it keeps ${old:-no} edition. Nothing of yours was replaced."
+      rm -rf "$tmp"; exit 1
+    fi
     cp "$tmp/new" "$LIB/.edition-files"
     echo "✓ library $stamp ready in $LIB"
   fi

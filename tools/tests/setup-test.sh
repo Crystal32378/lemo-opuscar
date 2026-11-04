@@ -22,7 +22,7 @@ head_of() { git -C "$1" rev-parse --short HEAD; }
 echo "setup.sh"
 mkdir -p "$T/src/core/render" "$T/src/styles/demo-a/demo"
 cd "$T/src" && g init -q && echo agents > AGENTS.md && echo r > core/render/r.js && echo note > MAINTAINING.md \
-  && echo code > styles/demo-a/demo/code.js && echo style > styles/demo-a/STYLE.md && printf 'local/\nstyles/*/demo/out/\n' > .gitignore \
+  && echo code > styles/demo-a/demo/code.js && echo style > styles/demo-a/STYLE.md && mkdir -p styles/demo-a/demo/片段 && echo shipped > styles/demo-a/demo/片段/說明.txt && printf 'local/\nstyles/*/demo/out/\n' > .gitignore \
   && g add -A && g commit -qm init && cd "$T" || exit 1
 g clone -q --bare src up.git
 push() { (cd "$T/src" && g add -A -f && g commit -qm "$1" && g push -q "$T/up.git" main); }
@@ -52,6 +52,13 @@ check "  …and the file is named in the message" 'grep -q "local/notes.txt" "$T
 mv "$L/local/notes.txt" "$T/notes.saved"
 run update; check "  …after moving it away, update goes through" '[ "$(rc)" = 0 ] && [ "$(cat "$L/local/notes.txt")" = "upstream version" ]'
 
+# the same with a non-ASCII name: git quotes such paths by default ("\347\254\224…")
+mkdir -p "$L/local"; echo "我的筆記" > "$L/local/筆記 一.txt"; h=$(head_of "$L")
+echo "upstream" > "src/local/筆記 一.txt" && push "track a Chinese file name"
+run update; check "update stops on an ignored file with a non-ASCII name, exit 1" '[ "$(rc)" = 1 ] && [ "$(cat "$L/local/筆記 一.txt")" = "我的筆記" ] && [ "$(head_of "$L")" = "$h" ]'
+check "  …and names it as it is on disk" 'grep -q "local/筆記 一.txt" "$T/out"'
+rm "$L/local/筆記 一.txt"; run update
+
 # an untracked (not ignored) file in the way
 echo "MINE" > "$L/NEW.md"; h=$(head_of "$L"); echo theirs > src/NEW.md; push "add NEW.md"
 run update; check "update stops on an untracked file in the way, exit 1" '[ "$(rc)" = 1 ] && [ "$(cat "$L/NEW.md")" = MINE ] && [ "$(head_of "$L")" = "$h" ]'
@@ -59,9 +66,10 @@ rm "$L/NEW.md"; run update
 
 # ignored files under a demo folder survive `setup.sh demo`, which widens the sparse checkout
 mkdir -p "$L/styles/demo-a/demo/out"; echo "MY RENDER" > "$L/styles/demo-a/demo/out/frame.txt"
-echo "MY CODE" > "$L/styles/demo-a/demo/code.js"
+echo "MY CODE" > "$L/styles/demo-a/demo/code.js"; mkdir -p "$L/styles/demo-a/demo/片段"; echo "我的" > "$L/styles/demo-a/demo/片段/說明.txt"
 run demo demo-a; check "setup.sh demo stops when a local file sits where a demo file goes, exit 1" '[ "$(rc)" = 1 ] && grep -q "demo not added" "$T/out" && [ "$(cat "$L/styles/demo-a/demo/code.js")" = "MY CODE" ]'
-rm "$L/styles/demo-a/demo/code.js"
+check "  …including one with a non-ASCII name" '[ "$(cat "$L/styles/demo-a/demo/片段/說明.txt")" = "我的" ] && grep -q "片段/說明.txt" "$T/out"'
+rm "$L/styles/demo-a/demo/code.js" "$L/styles/demo-a/demo/片段/說明.txt"
 run demo demo-a; check "setup.sh demo adds the demo" '[ "$(rc)" = 0 ] && [ "$(cat "$L/styles/demo-a/demo/code.js")" = code ]'
 check "  …and keeps ignored files in the demo folder" '[ "$(cat "$L/styles/demo-a/demo/out/frame.txt")" = "MY RENDER" ]'
 
@@ -109,6 +117,28 @@ check "  …after moving it away, the new edition is copied" '[ "$(cat "$D/core/
 echo "MINE" > "$D/core/b.txt"; echo shipped > "$S/library/core/b.txt"; edition 4.0.0
 drun; check "new edition does not replace a file added here at a path it now ships" '[ "$(cat "$D/core/b.txt")" = MINE ] && [ "$(cat "$D/.edition")" = 3.0.0 ]'
 rm "$D/core/b.txt"; drun
+
+# a folder where the new edition puts a file, and a file where it puts a folder: nothing is copied, the marker stays
+mkdir -p "$D/core/c.txt"; echo keep > "$D/core/c.txt/inside"; echo shipped > "$S/library/core/c.txt"; edition 4.1.0
+drun; check "new edition does not copy when a folder sits where a file goes" '[ "$(cat "$D/.edition")" = 4.0.0 ] && [ "$(cat "$D/core/c.txt/inside")" = keep ] && grep -q "core/c.txt" "$T/out"'
+check "  …and no other file was replaced" '[ "$(cat "$D/core/a.txt")" = v3 ]'
+rm -rf "$D/core/c.txt"; echo v4 > "$S/library/core/a.txt"; drun
+check "  …after moving it away, the new edition is copied" '[ "$(cat "$D/.edition")" = 4.1.0 ] && [ "$(cat "$D/core/c.txt")" = shipped ]'
+echo "MINE" > "$D/docs"; mkdir -p "$S/library/docs"; echo shipped > "$S/library/docs/d.txt"; edition 4.2.0
+drun; check "new edition does not copy when a file sits where a folder goes" '[ "$(cat "$D/.edition")" = 4.1.0 ] && [ "$(cat "$D/docs")" = MINE ]'
+rm "$D/docs"; drun
+
+# a copy that fails half-way keeps the old marker and record, so the next start tries again
+mkdir -p "$T/badbin"; realcp=$(command -v cp)
+printf '#!/bin/sh
+if [ "$1" = -R ]; then "%s" "$2/.edition" "$3/.edition"; "%s" "$2/core/a.txt" "$3/core/a.txt"; exit 1; fi
+exec "%s" "$@"
+' "$realcp" "$realcp" "$realcp" > "$T/badbin/cp"
+chmod +x "$T/badbin/cp"; echo v6 > "$S/library/core/a.txt"; edition 4.3.0; rec=$(cksum < "$D/.edition-files")
+PATH="$T/badbin:$PATH" drun
+check "a copy that fails half-way exits 1 and keeps the old edition marker" '[ "$(rc)" = 1 ] && [ "$(cat "$D/.edition")" = 4.2.0 ]'
+check "  …and the old record" '[ "$(cksum < "$D/.edition-files")" = "$rec" ]'
+drun; check "  …and the next start completes the copy" '[ "$(rc)" = 0 ] && [ "$(cat "$D/.edition")" = 4.3.0 ] && [ "$(cat "$D/core/a.txt")" = v6 ]'
 
 # a folder copied by the old setup.sh has no record of what it shipped: changed files are backed up before the copy
 rm "$D/.edition-files"; echo "OLD EDIT" > "$D/core/a.txt"; echo v5 > "$S/library/core/a.txt"; edition 5.0.0

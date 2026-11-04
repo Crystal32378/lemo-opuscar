@@ -43,6 +43,13 @@ occupied() {
     done
   done
 }
+# Run a git command that lists paths with -z and print the occupied ones. -z gives raw names: without it git quotes
+# non-ASCII and special names ("\347\254\224…"), which no file on disk matches. A name with a line break can't be
+# checked line by line, so it counts as occupied.
+taken() {
+  if [ "$("$@" | tr -cd '\n' | wc -c)" -gt 0 ]; then echo "(a path whose name contains a line break)"; return; fi
+  "$@" | tr '\0' '\n' | occupied
+}
 
 if [ "$1" = update ]; then
   # Updates happen only here, on request. Never a reset: local edits or commits stop the update instead.
@@ -57,7 +64,7 @@ if [ "$1" = update ]; then
   if [ "$(git -C "$LIB" rev-parse HEAD)" = "$(git -C "$LIB" rev-parse FETCH_HEAD)" ]; then
     echo "✓ already up to date ($before)"
   elif git -C "$LIB" merge-base --is-ancestor HEAD FETCH_HEAD 2>/dev/null; then
-    taken=$(git -C "$LIB" diff --no-renames --name-only --diff-filter=A HEAD FETCH_HEAD | occupied)
+    taken=$(taken git -C "$LIB" diff --no-renames --name-only --diff-filter=A -z HEAD FETCH_HEAD)
     if [ -n "$taken" ]; then
       echo "✗ not updated: the update adds files where $LIB already has files of its own (git may ignore them). Nothing was changed:"
       echo "$taken" | sed 's/^/  /' | head -20
@@ -135,7 +142,7 @@ case "$1" in
   demo)
     [ -n "$2" ] && [ -f "$LIB/styles/$2/STYLE.md" ] || { echo "usage: sh setup.sh demo <slug>  (slugs: $LIB/styles/README.md)"; exit 1; }
     if git -C "$LIB" sparse-checkout list >/dev/null 2>&1 && ! git -C "$LIB" sparse-checkout list | grep -qx "/styles/$2/demo/"; then
-      taken=$(git -C "$LIB" ls-tree -r --name-only HEAD -- "styles/$2/demo/" "styles/$2/poster.jpg" | occupied)
+      taken=$(taken git -C "$LIB" ls-tree -r -z --name-only HEAD -- "styles/$2/demo/" "styles/$2/poster.jpg")
       if [ -n "$taken" ]; then
         echo "✗ demo not added: $LIB already has files of its own where the demo goes. Nothing was changed:"
         echo "$taken" | sed 's/^/  /' | head -20

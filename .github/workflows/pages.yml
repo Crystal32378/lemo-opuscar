@@ -1,5 +1,8 @@
-# Builds the style gallery (styleboard/) and publishes it to GitHub Pages on every push to main.
+# Builds the style gallery (styleboard/) and publishes it to GitHub Pages.
 # Films: 720p cuts from the "web" release are copied into the site; full quality stays on the "films" release.
+# In this fork it is opt-in: the fork has no "web" release, so a push to main publishes only when the repository
+# variable PUBLISH_GALLERY is "true" (Settings → Secrets and variables → Actions → Variables). Run it by hand any time
+# from the Actions tab (workflow_dispatch). The setup tests (setup-tests.yml) run regardless.
 name: gallery
 
 on:
@@ -19,6 +22,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name == 'workflow_dispatch' || vars.PUBLISH_GALLERY == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
