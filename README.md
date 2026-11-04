@@ -149,7 +149,7 @@ Library updates and reinstalling never touch them. When the base style is update
 
 ### Update or uninstall
 
-Update, then restart Claude Code (the library in `~/lemo-opuscar` updates itself on the next film):
+Update the plugin, then restart Claude Code. The library in `~/lemo-opuscar` does not update itself; ask Claude to update it, or run `sh setup.sh update` from the skill's `scripts/` folder. The update stops, changing nothing, if you have edited the library:
 
 ```sh
 claude plugin marketplace update lemolab && claude plugin update lemo-opuscar@lemolab

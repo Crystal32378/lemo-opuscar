@@ -98,7 +98,7 @@ Master −14 LUFS, true peak −1.2 dB (`core/render/mux.sh`).
    - **Internet Archive**: only items whose own page states public domain or a CC0/CC BY licence; U.S. works published before 1931 are public domain.
    - **Library of Congress**: read each item's rights statement; "no known restrictions" is not enough.
    - **Official documents and data** (reports, statistics, court filings) from the agency's own site: the source of every fact; keep `FACTS.md` (claim, URL, quoted wording, derived sums with their arithmetic).
-   - **Map geometry**: Natural Earth (public domain). Its default borders are not usable for China: DIRECTOR.md §13.
+   - **Map geometry**: Natural Earth (public domain). Check its boundaries and their view against DIRECTOR.md §13.
 3. **Before downloading, tell the user** what you will fetch, from where and under which licence, and keep within a size budget. The finder copied into this style, `demo/tools/footage.py` (`search commons|archive|nasa`, `fetch`, `used`, `md`), logs licence, author, page and the seconds used of each file into `SOURCES.jsonl` and writes `SOURCES.md`; `demo/tools/commons-tools/peek.py` previews a Commons video from thumbnails before downloading it, `seg.py` downloads only a segment of a long one, `commons_thumb.py` takes a standard-width thumbnail when the original is rate-limited. Wikimedia rate-limits bursts (HTTP 429): one request at a time with pauses.
 4. **People on screen**: no close-up or slow motion of an identifiable private person; public figures and people in the news event are fine. Never use generated images as footage.
 

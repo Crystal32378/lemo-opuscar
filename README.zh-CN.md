@@ -149,7 +149,7 @@ agent 会读三份指南，像一个小工作室一样开工。<br>
 
 ### 更新和卸载
 
-更新，然后重启 Claude Code（`~/lemo-opuscar` 里的库会在下一次做片时自动更新）：
+更新插件，然后重启 Claude Code。`~/lemo-opuscar` 里的库不会自动更新：请 Claude 帮你更新，或在 skill 的 `scripts/` 文件夹里运行 `sh setup.sh update`。如果你改过库里的文件，更新会停下来，什么都不改：
 
 ```sh
 claude plugin marketplace update lemolab && claude plugin update lemo-opuscar@lemolab

@@ -105,7 +105,7 @@ A menu; use the ones the story needs, each once.
    - **Library of Congress** (loc.gov, tile.loc.gov; Chronicling America newspapers before 1931), **NASA**, other national archives.
    - **Print**: anything published in the US before 1931 (newspapers, magazines, books on archive.org / HathiTrust / Commons) is public domain in the US.
    - **Recordings**: US sound recordings published before 1926 are public domain in the US from 1 January 2026 (Music Modernization Act: 100 years after publication for pre-1947 recordings); UCSB Library / Internet Archive transfers (Edison, Victor) and the LOC National Jukebox give dates and matrix numbers. Check the composition's date too.
-   - **Maps**: Natural Earth (public domain) for outlines drawn in code. Its default borders are not usable for China: DIRECTOR.md §13.
+   - **Maps**: Natural Earth (public domain) for outlines drawn in code. Check its boundaries and their view against DIRECTOR.md §13.
 3. **Before downloading, tell the user** what you will fetch, from where, under which licence, and how big it is; keep `raw/` under ~1.5 GB.
 4. Everything used goes into `demo/CREDITS` and `SOURCES.md` (title, author, date, licence, page, which seconds). Real people: historical public figures and people in news events may appear; ordinary people's faces are never slowed down or made the close-up subject.
 5. Every fact in the voice and on screen goes into `demo/FACTS.md` with its source and the quoted wording; read the catalogue description of each film before using it (it may say what is really happening in the shot).
