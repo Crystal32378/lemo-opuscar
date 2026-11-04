@@ -53,6 +53,8 @@ Back up first (old versions move out of the repository, not into git). Re-render
 
 The Claude plugin directory lists a self-contained build of the plugin, on the orphan branch `directory` (the submission tracks that branch; `main` stays what visitors see). It carries the guides, every `STYLE.md` / `style.json` / `DEMO.md`, `core/` (without the Poly Haven models, which only demo code uses) and its own `README.md`, `SECURITY.md` and `SKILL.md`: nothing is cloned or fetched to tell the agent what to do, there are no demo sources, and Chinese edge-tts narration is used only with the user's consent. The sources of the plugin-only files are in `tools/directory/`; the build and its checks (file sizes, personal info) are in `tools/directory.py`.
 
+Both setup scripts (`plugin/skills/lemo-opuscar/scripts/setup.sh` and `tools/directory/setup.sh`) must never overwrite a file the user changed or added: `sh tools/tests/setup-test.sh` checks that, and CI runs it on every pull request.
+
 After a release on `main` (new styles, changed guides or tools):
 
 1. `git worktree add ../lemo-opuscar-directory directory` (once; reuse it afterwards).

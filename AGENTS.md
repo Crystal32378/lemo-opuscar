@@ -65,7 +65,7 @@ All 66 styles · 全部风格:
 ## Workflow
 
 1. **Brief.** Make sure the style and the topic are clear, then ask the user once, in a single message (DIRECTOR.md §1):
-   - anything about the topic you can't decide yourself (facts; names, logos or products that must appear);
+   - anything about the topic you can't decide yourself (facts; names, logos or products that must appear; how disputed places are drawn and named, when the film has maps and the sources don't settle it: DIRECTOR.md §13);
    - whether they have material of their own: a voice recording or a preferred voice, music, photos, logos, fonts, and for a style built from real material, their own data or scans;
    - the film's language, if it isn't obvious (default: the language they write in or chose, for voice and subtitles);
    - whether they want to review a storyboard first (default: no);

@@ -1,0 +1,32 @@
+# Regression tests for the setup scripts (local files are never silently overwritten), on Linux and macOS,
+# and a check that the directory edition still builds (every text replacement in tools/directory.py still matches).
+name: setup tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths: ['plugin/**', 'tools/**', 'core/README.md', '.github/workflows/setup-tests.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      # alarm: the whole run is killed after 8 minutes (it normally takes under a minute), so a hang ends as a failed
+      # step with its log; the test script itself also kills and names any single start that hangs for 60 s
+      - run: perl -e 'alarm 480; exec @ARGV or die' sh tools/tests/setup-test.sh
+  directory-edition:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 tools/directory.py 0.0.0

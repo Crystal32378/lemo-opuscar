@@ -59,9 +59,10 @@ EDITS = [
     ('TECHNIQUE.md',
      ' In skill mode, get the source with `sh <skill folder>/scripts/setup.sh demo <slug>`. Copied demo code often reaches the library with `../..`: replace that with `$LIB` or absolute URLs.',
      ' This edition of the plugin doesn\'t include the demo sources: read `DEMO.md` for how a demo was built and write your own code.'),
-    ('core/README.md', '| find, clone or update the library; prints `LIB=<path>` |',
+    ('core/README.md', '| find the library, or clone it on first use (never updates it); prints `LIB=<path>` |',
      '| run by the skill\'s `scripts/setup.sh`, which copies the bundled library to its working folder; prints `LIB=<path>` |'),
     ('core/README.md', '| `… setup.sh demo <slug>` | adds one style\'s demo source and poster (to read, not to render) |\n', ''),
+    ('core/README.md', '| `… setup.sh update` | update the library, only on request: a fast-forward of `main` that stops, changing nothing, on local edits, local commits or files it would overwrite |\n', ''),
     ('core/README.md', '| edge-tts (Microsoft), online; same outputs as `tts.py`.',
      '| edge-tts (Microsoft), online: sends the text to Microsoft, use it only with the user\'s consent; same outputs as `tts.py`.'),
     ('core/README.md', '(default `~/lemo-opuscar`)', '(default `~/.lemo-opuscar`)'),
@@ -93,8 +94,8 @@ EDITS = [
      'only the studio HDRI, `sh tools/fetch.sh hdri` (Poly Haven, CC0, 12 MB), and the walnut veneer textures, `sh tools/fetch.sh textures` (Poly Haven, CC0, 7 MB);'),
     ('styles/data-physical/STYLE.md', 'The walnut veneer is in `core/assets/polyhaven/`.', 'Both unpack into `core/assets/polyhaven/`.'),
     # tools/fetch.py is split out of fetch.sh by split_fetch(); this edition has no git checkout to pull
-    ('tools/fetch.py', '(sh tools/setup.sh, or git pull) and try again', '(update the plugin) and try again'),
-    ('tools/fetch.py', '(sh tools/setup.sh, or git pull) and run this again', '(update the plugin) and run this again'),
+    ('tools/fetch.py', '(sh tools/setup.sh update, or git pull in your own clone) and try again', '(update the plugin) and try again'),
+    ('tools/fetch.py', '(sh tools/setup.sh update, or git pull in your own clone) and run this again', '(update the plugin) and run this again'),
 ]
 
 # fetch.sh runs its Python from a here-document, which the portal reads as "download and run": ship that Python as a file
