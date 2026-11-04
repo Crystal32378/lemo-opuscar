@@ -16,7 +16,26 @@ g() { git -c user.email=test@example.com -c user.name=test -c init.defaultBranch
 # A variable set in front of a function call (VAR=x fn) is unspecified in POSIX and stays set afterwards in macOS's
 # /bin/sh (bash 3.2): set it inside a subshell instead.
 # the scripts' last lines report missing tools: tests read only their own markers and exit codes
-run() { sh "$SETUP" "$@" > "$T/out" 2>&1; echo $? > "$T/rc"; }
+# Every start of a setup script runs under a watchdog: one that is still running after 60 s is killed with all its
+# children (it runs in a process group of its own) and counted as a failure, named, so a hang shows up as a failed
+# check with its last output instead of a CI job that never ends.
+guarded() {   # guarded <out file> <rc file> <command…>
+  gout=$1 grc=$2; shift 2
+  perl -e 'setpgrp(0, 0); exec @ARGV or die "exec: $!"' "$@" > "$gout" 2>&1 & gp=$!
+  gn=0
+  while kill -0 "$gp" 2>/dev/null; do
+    gn=$((gn + 1))
+    if [ "$gn" -ge 600 ]; then
+      kill -9 -- "-$gp" 2>/dev/null; kill -9 "$gp" 2>/dev/null; wait "$gp" 2>/dev/null
+      { echo "HUNG for 60 s: $*"; echo "  its last output:"; tail -5 "$gout" | sed 's/^/    /'; } >> "$T/hung"
+      echo "  ✗ HUNG for 60 s and killed: $*"; tail -5 "$gout" | sed 's/^/      /'
+      echo 124 > "$grc"; return
+    fi
+    sleep 0.1
+  done
+  wait "$gp"; echo $? > "$grc"
+}
+run() { guarded "$T/out" "$T/rc" sh "$SETUP" "$@"; }
 rc() { cat "$T/rc"; }
 head_of() { git -C "$1" rev-parse --short HEAD; }
 
@@ -98,7 +117,7 @@ cp "$DIRSETUP" "$S/scripts/setup.sh"
 printf '#!/bin/sh\necho LIB=x\n' > "$S/library/tools/setup.sh"
 edition() { echo "$1" > "$S/library/.edition"; }
 D=$T/dlib
-drun() { LEMO_OPUSCAR_HOME="$D" sh "$S/scripts/setup.sh" > "$T/out" 2>&1; echo $? > "$T/rc"; }
+drun() { guarded "$T/out" "$T/rc" env LEMO_OPUSCAR_HOME="$D" sh "$S/scripts/setup.sh"; }
 
 echo v1 > "$S/library/core/a.txt"; echo v1 > "$S/library/AGENTS.md"; edition 1.0.0
 drun; check "first copy" '[ "$(rc)" = 0 ] && [ "$(cat "$D/core/a.txt")" = v1 ] && [ -f "$D/.edition-files" ]'
@@ -196,8 +215,8 @@ D=$D0
 
 # two starts at once: one copies, the other waits for it; both end with the whole new edition and no lock left
 for i in 1 2 3 4 5; do echo "k$i v4" > "$S/library/core/k$i.txt"; done; echo v9 > "$S/library/core/a.txt"; edition 4.6.0
-(LEMO_OPUSCAR_HOME="$D" sh "$S/scripts/setup.sh" > "$T/out1" 2>&1; echo $? > "$T/rc1") &
-(LEMO_OPUSCAR_HOME="$D" sh "$S/scripts/setup.sh" > "$T/out2" 2>&1; echo $? > "$T/rc2") &
+guarded "$T/out1" "$T/rc1" env LEMO_OPUSCAR_HOME="$D" sh "$S/scripts/setup.sh" &
+guarded "$T/out2" "$T/rc2" env LEMO_OPUSCAR_HOME="$D" sh "$S/scripts/setup.sh" &
 wait
 check "two starts at once both succeed" '[ "$(cat "$T/rc1")" = 0 ] && [ "$(cat "$T/rc2")" = 0 ]'
 check "  …the folder has the whole new edition, once" '[ "$(cat "$D/.edition")" = 4.6.0 ] && [ "$(cat "$D/core/a.txt")" = v9 ] && [ "$(cat "$D/core/k5.txt")" = "k5 v4" ] && [ "$(cat "$T/out1" "$T/out2" | grep -c "ready in")" = 1 ]'
@@ -207,8 +226,8 @@ check "  …and no lock or staged file is left" '[ ! -e "$D/.lemo-lock" ] && [ "
 # remove it and both copy. Both starts leave the library and the lock as they are, and say how to clear it.
 mkdir "$D/.lemo-lock"; sh -c 'echo $$' > "$D/.lemo-lock/pid"; lockpid=$(cat "$D/.lemo-lock/pid")
 echo v10 > "$S/library/core/a.txt"; edition 4.7.0
-(LEMO_OPUSCAR_HOME="$D" sh "$S/scripts/setup.sh" > "$T/out1" 2>&1; echo $? > "$T/rc1") &
-(LEMO_OPUSCAR_HOME="$D" sh "$S/scripts/setup.sh" > "$T/out2" 2>&1; echo $? > "$T/rc2") &
+guarded "$T/out1" "$T/rc1" env LEMO_OPUSCAR_HOME="$D" sh "$S/scripts/setup.sh" &
+guarded "$T/out2" "$T/rc2" env LEMO_OPUSCAR_HOME="$D" sh "$S/scripts/setup.sh" &
 wait
 check "two starts at the same stale lock: neither copies, both carry on with the old edition" '[ "$(cat "$T/rc1")" = 0 ] && [ "$(cat "$T/rc2")" = 0 ] && [ "$(cat "$D/.edition")" = 4.6.0 ] && [ "$(cat "$D/core/a.txt")" = v9 ] && [ "$(cat "$T/out1" "$T/out2" | grep -c "ready in")" = 0 ]'
 check "  …the stale lock is left exactly as it was, and both say how to clear it" '[ "$(cat "$D/.lemo-lock/pid")" = "$lockpid" ] && grep -q "rm -rf" "$T/out1" && grep -q "rm -rf" "$T/out2"'
@@ -218,5 +237,6 @@ unlock; drun; check "  …once it is cleared, the next start copies" '[ "$(rc)" 
 rm "$D/.edition-files"; echo "OLD EDIT" > "$D/core/a.txt"; echo v5 > "$S/library/core/a.txt"; edition 5.0.0
 drun; check "without a record, changed files are backed up before the copy" '[ "$(cat "$D/core/a.txt")" = v5 ] && [ "$(cat "$D"/.lemo-backup-*/core/a.txt)" = "OLD EDIT" ]'
 
+[ -s "$T/hung" ] && { fail=$((fail + $(grep -c '^HUNG' "$T/hung"))); echo "hung:"; cat "$T/hung"; }
 echo "$pass passed, $fail failed"
 [ "$fail" = 0 ]
