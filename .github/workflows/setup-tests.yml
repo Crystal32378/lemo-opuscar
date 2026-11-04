@@ -1,0 +1,29 @@
+# Regression tests for the setup scripts (local files are never silently overwritten), on Linux and macOS,
+# and a check that the directory edition still builds (every text replacement in tools/directory.py still matches).
+name: setup tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths: ['plugin/**', 'tools/**', 'core/README.md', '.github/workflows/setup-tests.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: sh tools/tests/setup-test.sh
+  directory-edition:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 tools/directory.py 0.0.0

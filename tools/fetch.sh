@@ -32,7 +32,7 @@ packs = sys.argv[1:]
 missing = [p for p in packs if p not in man['packs']]
 if missing:
     sys.exit(f'✗ {", ".join(missing)} is not published yet (tools/assets.json has no entry). Refresh the library '
-             f'(sh plugin/skills/lemo-opuscar/scripts/setup.sh, or git pull) and try again.')
+             f'(sh plugin/skills/lemo-opuscar/scripts/setup.sh update, or git pull in your own clone) and try again.')
 
 
 def sha256(path):
@@ -97,7 +97,7 @@ for name in packs:
     if sha256(tmp) != p['sha256']:
         os.remove(tmp)
         sys.exit('✗ checksum mismatch. The pack on the release was probably updated after your copy of the library was.\n'
-                 '  Refresh the library (sh plugin/skills/lemo-opuscar/scripts/setup.sh, or git pull) and run this again. If it still fails, just retry.')
+                 '  Refresh the library (sh plugin/skills/lemo-opuscar/scripts/setup.sh update, or git pull in your own clone) and run this again. If it still fails, just retry.')
     extract(tmp)
     os.remove(tmp)
     print(f'✓ {name}')

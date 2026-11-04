@@ -18,7 +18,8 @@ other models may not reproduce them well, so use them with care.
 🆕 **2026-10-22 · [Make a style your own](#make-a-style-your-own)**: change a style or start blank, and keep it. [See how ↓](#make-a-style-your-own)<br>
 🆕 **2026-10-16 · [Evidence Films](https://lemomo-ai.github.io/lemo-opuscar/#evidence-films)**: 8 styles that film real material, every number sourced. [See them ↓](#evidence-films)
 
-<sub>Official repo: [github.com/lemomo-ai/lemo-opuscar](https://github.com/lemomo-ai/lemo-opuscar) · by Lemomo ([@lemomo_ai](https://x.com/lemomo_ai))</sub>
+<sub>Official repo: [github.com/lemomo-ai/lemo-opuscar](https://github.com/lemomo-ai/lemo-opuscar) · by Lemomo ([@lemomo_ai](https://x.com/lemomo_ai))</sub><br>
+<sub>This fork: [github.com/Crystal32378/lemo-opuscar](https://github.com/Crystal32378/lemo-opuscar). Maps follow each film's purpose and sources ([DIRECTOR.md §13](DIRECTOR.md#13-maps)), and the library updates only when you ask. The install steps below use this fork.</sub>
 
 </div>
 
@@ -62,11 +63,13 @@ Two ways in; the skill is the easiest.
 In your terminal:
 
 ```sh
-claude plugin marketplace add lemomo-ai/lemo-opuscar
+claude plugin marketplace add Crystal32378/lemo-opuscar
 claude plugin install lemo-opuscar@lemolab
 ```
 
 Then use it from any folder.
+
+If you installed the original before, its marketplace has the same name (`lemolab`): remove it first with `claude plugin marketplace remove lemolab`. A library it already downloaded to `~/lemo-opuscar` keeps updating from the original until you point it here: `git -C ~/lemo-opuscar remote set-url origin https://github.com/Crystal32378/lemo-opuscar.git`.
 
 - On first use it downloads the guides, tools and style prompts to `~/lemo-opuscar`, shared by all your films.
 - Each film's project, from source to finished video, goes in the folder you started from.
@@ -75,7 +78,7 @@ Then use it from any folder.
 ### Option 2: clone the repo
 
 ```sh
-git clone https://github.com/lemomo-ai/lemo-opuscar.git
+git clone https://github.com/Crystal32378/lemo-opuscar.git
 cd lemo-opuscar
 claude
 ```

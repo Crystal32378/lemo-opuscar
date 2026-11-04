@@ -6,7 +6,8 @@ Command reference for `core/` and `tools/`. How the pieces fit together is in [`
 
 | Command | What it does |
 |---|---|
-| `sh plugin/skills/lemo-opuscar/scripts/setup.sh` | find, clone or update the library; prints `LIB=<path>` |
+| `sh plugin/skills/lemo-opuscar/scripts/setup.sh` | find the library, or clone it on first use (never updates it); prints `LIB=<path>` |
+| `… setup.sh update` | update the library, only on request: a fast-forward of `main` that stops, changing nothing, on local edits, local commits or files it would overwrite |
 | `… setup.sh deps` | core tier: npm packages, headless browser, `.venv` from `requirements.txt` |
 | `… setup.sh deps voice` | adds `requirements-voice.txt` (kokoro-onnx, edge-tts, faster-whisper) and the Kokoro model |
 | `… setup.sh deps music` | adds `requirements-music.txt` (numba, for `pluck.py`; `sampler.py` needs only the core) |

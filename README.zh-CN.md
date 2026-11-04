@@ -17,7 +17,8 @@
 🆕 **2026-10-22 · 新玩法[「改成你自己的风格」](#改成你自己的风格)**：改库里的风格或从空白做，存成你自己的。[往下看 ↓](#改成你自己的风格)<br>
 🆕 **2026-10-16 · 新分类[「实证影像」](https://lemomo-ai.github.io/lemo-opuscar/#evidence-films)**：8 种风格，拍真实素材，每个数字都有出处。[往下看 ↓](#实证影像)
 
-<sub>官方仓库：[github.com/lemomo-ai/lemo-opuscar](https://github.com/lemomo-ai/lemo-opuscar) · 作者 Lemomo（[@lemomo_ai](https://x.com/lemomo_ai)）</sub>
+<sub>官方仓库：[github.com/lemomo-ai/lemo-opuscar](https://github.com/lemomo-ai/lemo-opuscar) · 作者 Lemomo（[@lemomo_ai](https://x.com/lemomo_ai)）</sub><br>
+<sub>本 fork：[github.com/Crystal32378/lemo-opuscar](https://github.com/Crystal32378/lemo-opuscar)。地图依每支片子的目的和资料来源处理（[DIRECTOR.md §13](DIRECTOR.md#13-maps)），库只在你要求时更新。下面的安装步骤用的是这个 fork。</sub>
 
 </div>
 
@@ -61,11 +62,13 @@
 在终端里：
 
 ```sh
-claude plugin marketplace add lemomo-ai/lemo-opuscar
+claude plugin marketplace add Crystal32378/lemo-opuscar
 claude plugin install lemo-opuscar@lemolab
 ```
 
 之后在任何目录都能用。
+
+如果你之前装过原版：它的 marketplace 同名（`lemolab`），先用 `claude plugin marketplace remove lemolab` 移除。原版已经下载到 `~/lemo-opuscar` 的库，会继续从原版更新，直到你把它指向这里：`git -C ~/lemo-opuscar remote set-url origin https://github.com/Crystal32378/lemo-opuscar.git`。
 
 - 第一次使用时，它会把指南、工具和风格提示词下载到 `~/lemo-opuscar`，所有片子共用这一份。
 - 每支片子的工程，从源码到成片，都放在你发起时所在的文件夹里。
@@ -74,7 +77,7 @@ claude plugin install lemo-opuscar@lemolab
 ### 方式二：clone 仓库
 
 ```sh
-git clone https://github.com/lemomo-ai/lemo-opuscar.git
+git clone https://github.com/Crystal32378/lemo-opuscar.git
 cd lemo-opuscar
 claude
 ```

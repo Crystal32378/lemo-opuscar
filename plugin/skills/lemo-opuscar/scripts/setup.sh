@@ -30,6 +30,19 @@ apply_sparse() {
 }
 
 managed() { [ "$(git -C "$LIB" config --get lemo.managed 2>/dev/null)" = true ]; }
+# Paths (one per line on stdin) that git is about to write: print those where something is already on disk, a file
+# git ignores included, or where a parent folder is a file. git's own --no-overwrite-ignore is not enough: in a sparse
+# checkout (ours) it still writes over ignored files.
+occupied() {
+  while IFS= read -r f; do
+    if [ -e "$LIB/$f" ] || [ -L "$LIB/$f" ]; then echo "$f"; continue; fi
+    d=$(dirname "$f")
+    while [ "$d" != . ]; do
+      if [ -e "$LIB/$d" ] && [ ! -d "$LIB/$d" ]; then echo "$d"; break; fi
+      d=$(dirname "$d")
+    done
+  done
+}
 
 if [ "$1" = update ]; then
   # Updates happen only here, on request. Never a reset: local edits or commits stop the update instead.
@@ -44,7 +57,18 @@ if [ "$1" = update ]; then
   if [ "$(git -C "$LIB" rev-parse HEAD)" = "$(git -C "$LIB" rev-parse FETCH_HEAD)" ]; then
     echo "✓ already up to date ($before)"
   elif git -C "$LIB" merge-base --is-ancestor HEAD FETCH_HEAD 2>/dev/null; then
-    git -C "$LIB" merge --quiet --ff-only FETCH_HEAD || { echo "✗ not updated: the fast-forward failed. Nothing was changed."; exit 1; }
+    taken=$(git -C "$LIB" diff --no-renames --name-only --diff-filter=A HEAD FETCH_HEAD | occupied)
+    if [ -n "$taken" ]; then
+      echo "✗ not updated: the update adds files where $LIB already has files of its own (git may ignore them). Nothing was changed:"
+      echo "$taken" | sed 's/^/  /' | head -20
+      echo "  Move or rename them, then run update again."; exit 1
+    fi
+    # --no-overwrite-ignore: a file git ignores here (a note, a render, a model) that upstream now tracks stops the update
+    if ! err=$(git -C "$LIB" merge --quiet --ff-only --no-overwrite-ignore FETCH_HEAD 2>&1); then
+      echo "✗ not updated: files in $LIB would be overwritten by the update. Nothing was changed."
+      echo "$err" | sed -n 's/^[[:space:]]\{1,\}/  /p' | head -20
+      echo "  Move or rename them, then run update again."; exit 1
+    fi
     apply_sparse
     echo "✓ updated $before → $(git -C "$LIB" rev-parse --short HEAD)"
   elif git -C "$LIB" merge-base --is-ancestor FETCH_HEAD HEAD 2>/dev/null; then
@@ -111,6 +135,12 @@ case "$1" in
   demo)
     [ -n "$2" ] && [ -f "$LIB/styles/$2/STYLE.md" ] || { echo "usage: sh setup.sh demo <slug>  (slugs: $LIB/styles/README.md)"; exit 1; }
     if git -C "$LIB" sparse-checkout list >/dev/null 2>&1 && ! git -C "$LIB" sparse-checkout list | grep -qx "/styles/$2/demo/"; then
+      taken=$(git -C "$LIB" ls-tree -r --name-only HEAD -- "styles/$2/demo/" "styles/$2/poster.jpg" | occupied)
+      if [ -n "$taken" ]; then
+        echo "✗ demo not added: $LIB already has files of its own where the demo goes. Nothing was changed:"
+        echo "$taken" | sed 's/^/  /' | head -20
+        echo "  Move or rename them, then run this again."; exit 1
+      fi
       git -C "$LIB" sparse-checkout add "/styles/$2/demo/" "/styles/$2/poster.jpg"
     fi
     echo "demo source: $LIB/styles/$2/demo"
