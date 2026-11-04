@@ -3,6 +3,7 @@
 - Creator: **Claude (Anthropic's Opus model) for Crystal**, 2026-11-04.
 - Format: 15.000 seconds, 1920 × 1080, 24 fps; H.264 video and stereo AAC audio, −14 LUFS. No narration, no dialogue, no on-screen text.
 - Story: a line running along the sea curls up into a pelican, rests on the tip of its beak, draws the pouch in gold, then goes back to the water and runs out of the picture: left for whoever draws the next one.
+- Sound: solo clarinet and the pen on paper. While the pen rests on the beak (about 7.6–9.4 s) the music and its reverb stop completely; a faint paper room tone and the soft swell of the ink blot stay, at about −45 dB RMS. It is a near-silence, not digital silence.
 
 ## Original and interpretation
 
@@ -19,14 +20,14 @@ Tools: Node.js, headless Chromium (Playwright), Python (NumPy, SciPy, soundfile)
 ## Files
 
 - [Film (MP4)](one-line-pelican.mp4)
-- [Source (ZIP)](one-line-pelican-source.zip): the drawing, renderer, score, mix, `build.sh`, the treatment and the original `CREDITS`. Its README says how to rebuild inside a clone of the toolkit.
+- [Source (ZIP)](one-line-pelican-source.zip): the drawing, renderer, score, mix, `build.sh`, the treatment, the original `CREDITS` and the toolkit's MIT `LICENSE`. Its README says how to rebuild inside a clone of the toolkit and which files the licence covers. The film was built from exactly this code; the second version of the ZIP only adds the licence, the per-file licence lines and corrected comments about the near-silence (checked: the mix renders to the same bytes).
 - [Poster](poster.jpg): the last frame, the whole picture.
 
 SHA-256:
 
 ```text
 4d59abe40bf04aaed2db464c03bb6cdbc48b616d02c8796dcdce888693a11150  one-line-pelican.mp4
-68a5ad1150dda22ab3b51b68ce69b519030fbd557127965a9318fdb7e6810162  one-line-pelican-source.zip
+f0ea9dcc947713fd4f1a864475c7cf41e684bfe14ff01dc45d250beee883b900  one-line-pelican-source.zip
 ```
 
-The code in the source ZIP follows the repository's MIT licence. No new reuse permission is granted for the film itself beyond what Crystal decides for this gallery.
+Code licence: `geom.js`, `ink.js`, `paper.js`, `cam.js` and `hands.js` are adapted from Lemo-Opuscar (Copyright (c) 2026 LemoLab, MIT); the full MIT text is in the ZIP as `LICENSE`, and each of those files names it in its first line. The code written for this film is offered under the same MIT terms. No new reuse permission is granted for the film itself beyond what Crystal decides for this gallery.

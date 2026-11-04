@@ -27,7 +27,7 @@ WORKS = {
     },
     'opus-one-line': {
         'one-line-pelican.mp4': '4d59abe40bf04aaed2db464c03bb6cdbc48b616d02c8796dcdce888693a11150',
-        'one-line-pelican-source.zip': '68a5ad1150dda22ab3b51b68ce69b519030fbd557127965a9318fdb7e6810162',
+        'one-line-pelican-source.zip': 'f0ea9dcc947713fd4f1a864475c7cf41e684bfe14ff01dc45d250beee883b900',
     },
 }
 for name, expected in WORKS.items():
